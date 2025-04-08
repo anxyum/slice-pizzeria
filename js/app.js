@@ -2,6 +2,8 @@ const $pizzasWrapper = document.querySelector(".pizzas-wrapper");
 const $cartWrapper = document.querySelector(".basket-aside");
 const $modal = document.querySelector(".order-modal-wrapper");
 
+const apiPath = "http://10.59.122.150:3000";
+
 let cart = {};
 let products = [];
 
@@ -222,11 +224,12 @@ function displayCart(cart) {
 
   $cartItemsWrapper.appendChild($cartDelivery);
 
-  const $cartButton = document.createElement("a");
+  const $cartButton = document.createElement("button");
   $cartButton.classList.add("confirm-order-btn");
   $cartButton.textContent = "Confirm order";
   $cartButton.onclick = async () => {
-    const res = await fetch("http://10.59.122.41:3000/orders/", {
+    $cartButton.disabled = true;
+    const res = await fetch(`${apiPath}/orders/`, {
       method: "POST",
       headers: {
         Authorization: "Bearer " + localStorage.getItem("token"),
@@ -239,8 +242,7 @@ function displayCart(cart) {
       }),
     });
     const data = await res.json();
-    console.log(data);
-    displayModal(cart);
+    displayModal(data);
   };
 
   $cartItemsWrapper.appendChild($cartButton);
@@ -249,12 +251,65 @@ function displayCart(cart) {
 }
 
 async function getProducts() {
-  const res = await fetch("http://10.59.122.41:3000/products");
+  const res = await fetch(`${apiPath}/products`);
   const data = await res.json();
   return data;
 }
 
-function displayModal(cart) {
+function createReportItem(item) {
+  const $reportItem = document.createElement("li");
+  $reportItem.classList.add("order-detail-product-item");
+
+  const $itemImg = document.createElement("img");
+  $itemImg.classList.add("order-detail-product-image");
+  $itemImg.src = item.product.image;
+
+  $reportItem.appendChild($itemImg);
+
+  const $itemName = document.createElement("span");
+  $itemName.classList.add("order-detail-product-name");
+  $itemName.textContent = item.product.name;
+
+  $reportItem.appendChild($itemName);
+
+  const $itemQuantity = document.createElement("span");
+  $itemQuantity.classList.add("order-detail-product-quantity");
+  $itemQuantity.textContent = item.quantity + "x";
+
+  $reportItem.appendChild($itemQuantity);
+
+  const $itemUnitPrice = document.createElement("span");
+  $itemUnitPrice.classList.add("order-detail-product-unit-price");
+  $itemUnitPrice.textContent = "@ $" + item.product.price.toFixed(2);
+
+  $reportItem.appendChild($itemUnitPrice);
+
+  const $itemTotalPrice = document.createElement("span");
+  $itemTotalPrice.classList.add("order-detail-product-total-price");
+  $itemTotalPrice.textContent =
+    "$" + (item.quantity * item.product.price).toFixed(2);
+
+  $reportItem.appendChild($itemTotalPrice);
+
+  return $reportItem;
+}
+
+function displayModal(order) {
+  const $reportItemList = $modal.querySelector(".order-detail");
+  $reportItemList.innerHTML = "";
+
+  order.products.forEach((item) => {
+    $reportItemList.appendChild(createReportItem(item));
+  });
+
+  $reportItemList.innerHTML += `
+          <li class="order-detail-total-price">
+            <span class="total-order-title">Order total</span>
+            <span class="total-order-price">$${order.products
+              .reduce((a, b) => a + b.product.price * b.quantity, 0)
+              .toFixed(2)}</span>
+          </li>`;
+
   $modal.classList.remove("hidden");
 }
 
@@ -272,3 +327,10 @@ localStorage.setItem(
 );
 
 main();
+
+$modal.querySelector(".new-order-btn").addEventListener("click", () => {
+  $modal.classList.add("hidden");
+  cart = {};
+  displayProducts(products);
+  displayCart(cart);
+});

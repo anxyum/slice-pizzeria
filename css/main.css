@@ -199,6 +199,8 @@ body {
 
 .confirm-order-btn,
 .new-order-btn {
+  width: 100%;
+  border: none;
   cursor: pointer;
   background-color: var(--tia-maria);
   color: var(--white);
