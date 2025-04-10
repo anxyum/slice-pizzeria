@@ -2,7 +2,7 @@ const $pizzasWrapper = document.querySelector(".pizzas-wrapper");
 const $cartWrapper = document.querySelector(".basket-aside");
 const $modal = document.querySelector(".order-modal-wrapper");
 
-const apiPath = "http://10.59.122.150:3000";
+const apiPath = "http://10.59.122.27:3000";
 
 let cart = {};
 let products = [];
@@ -323,7 +323,7 @@ async function main() {
 
 localStorage.setItem(
   "token",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImEubGF2aWduZUBlZGVuc2Nob29sLmZyIiwic3ViIjoiNTFjNmMyZDEtMGY4OC00Mzk2LWJmNzktNjkyNjI2ZTYwNDg4IiwiaWF0IjoxNzQ0MDM3MTUzLCJleHAiOjE3NDQxMjM1NTN9.LbeUQeeGmrwaKx9dCxZsMZDN7dfv_cmdvAhkUjRdYP0"
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImEubGF2aWduZUBlZGVuc2Nob29sLmZyIiwic3ViIjoiNTFjNmMyZDEtMGY4OC00Mzk2LWJmNzktNjkyNjI2ZTYwNDg4IiwiaWF0IjoxNzQ0Mjg1NTk0LCJleHAiOjE3NDQzNzE5OTR9.xVUN4TRvU28a51CT7q9Gjs_J8Kw-3oTq7moMD1Z0fKI"
 );
 
 main();

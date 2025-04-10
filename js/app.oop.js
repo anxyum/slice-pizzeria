@@ -5,13 +5,13 @@ const $modal = document.querySelector(".order-modal-wrapper");
 class Api {
   constructor(url) {
     this.url = url;
-    this.token = localStorage.getItem("accessToken") || null;
+    this.token = localStorage.getItem("token") || null;
   }
 
   async connect(email, password) {
     const token = await this.post("auth/login/", { email, password });
+    localStorage.setItem("token", token);
     this.token = token;
-    return token;
   }
 
   decodeJson(body) {
@@ -23,31 +23,53 @@ class Api {
   }
 
   async get(route, hasToken) {
-    return hasToken
-      ? this.decodeJson(
-          await fetch(`${this.url}/${route}`, {
-            headers: {
-              Authorization: this.token,
-            },
-          })
-        )
-      : this.decodeJson(await fetch(`${this.url}/${route}`));
+    let params;
+    if (hasToken) {
+      params = [
+        `${this.url}/${route}`,
+        {
+          headers: {
+            Authorization: "Bearer " + this.token,
+          },
+        },
+      ];
+    } else {
+      params = [`${this.url}/${route}`];
+    }
+
+    const res = await fetch(...params);
+    return this.decodeJson(res);
   }
 
-  post(route, body, hasToken) {
-    return hasToken
-      ? fetch(`${this.url}${route}`, {
+  async post(route, body, hasToken) {
+    let params;
+    if (hasToken) {
+      params = [
+        `${this.url}/${route}`,
+        {
           method: "POST",
           headers: {
-            Authorization: this.token,
-            "content-type": "application/",
+            Authorization: "Bearer " + this.token,
+            "content-type": "application/json",
           },
           body: this.parseToJSON(body),
-        })
-      : fetch(`${this.url}${route}`, {
+        },
+      ];
+    } else {
+      params = [
+        `${this.url}/${route}`,
+        {
           method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
           body: this.parseToJSON(body),
-        });
+        },
+      ];
+    }
+
+    const res = await fetch(...params);
+    return this.decodeJson(res);
   }
 }
 
@@ -58,95 +80,192 @@ class Product {
     this.description = description;
     this.price = price;
     this.image = image;
+
+    this.card = new ProductCard(this);
+  }
+}
+
+class ProductCard {
+  constructor(product) {
+    this.product = product;
+    [this.$element, this.$cardButtons] = this.createCard();
   }
 
-  getCard() {
-    const card = document.createElement("div");
-    card.classList.add("pizza-item");
-    card.dataset.id = this.id;
+  updateQuantity(quantity) {
+    this.$element.querySelector(".edit-cart-count").textContent = quantity;
+  }
 
-    const mainPicture = document.createElement("img");
-    mainPicture.classList.add("pizza-picture");
-    mainPicture.src = this.image;
+  createCard() {
+    const $card = document.createElement("div");
+    $card.classList.add("pizza-item");
+    $card.dataset.id = this.product.id;
 
-    card.appendChild(mainPicture);
+    const $mainPicture = document.createElement("img");
+    $mainPicture.classList.add("pizza-picture");
+    $mainPicture.src = this.product.image;
 
-    const addToCartBtn = document.createElement("span");
-    addToCartBtn.classList.add("add-to-cart-btn");
+    $card.appendChild($mainPicture);
 
-    const addToCartBtnImg = document.createElement("img");
-    addToCartBtnImg.src = "../images/carbon_shopping-cart-plus.svg";
+    const $addToCartBtn = document.createElement("span");
+    $addToCartBtn.classList.add("add-to-cart-btn");
 
-    addToCartBtn.appendChild(addToCartBtnImg);
-    addToCartBtn.innerHTML += " Ajouter au panier ";
+    const $addToCartBtnImg = document.createElement("img");
+    $addToCartBtnImg.src = "../images/carbon_shopping-cart-plus.svg";
 
-    card.appendChild(addToCartBtn);
+    $addToCartBtn.appendChild($addToCartBtnImg);
+    $addToCartBtn.innerHTML += " Ajouter au panier ";
 
-    const editCartWrapper = document.createElement("span");
-    editCartWrapper.classList.add("edit-cart-buttons-wrapper");
+    $card.appendChild($addToCartBtn);
 
-    const editCartSubtractButton = document.createElement("img");
-    editCartSubtractButton.classList.add("subtract-btn");
-    editCartSubtractButton.src = "../images/Subtract Icon.svg";
+    const $editCartWrapper = document.createElement("span");
+    $editCartWrapper.classList.add("edit-cart-buttons-wrapper");
 
-    editCartWrapper.appendChild(editCartSubtractButton);
+    const $editCartSubtractButton = document.createElement("img");
+    $editCartSubtractButton.classList.add("subtract-btn");
+    $editCartSubtractButton.src = "../images/Subtract Icon.svg";
 
-    const editCartButtonCount = document.createElement("span");
-    editCartButtonCount.classList.add("edit-cart-count");
-    editCartButtonCount.textContent = "0";
+    $editCartWrapper.appendChild($editCartSubtractButton);
 
-    editCartWrapper.appendChild(editCartButtonCount);
+    const $editCartButtonCount = document.createElement("span");
+    $editCartButtonCount.classList.add("edit-cart-count");
+    $editCartButtonCount.textContent = "1";
 
-    const editCartAddButton = document.createElement("img");
-    editCartAddButton.classList.add("add-btn");
-    editCartAddButton.src = "../images/Add Icon.svg";
+    $editCartWrapper.appendChild($editCartButtonCount);
 
-    editCartWrapper.appendChild(editCartAddButton);
+    const $editCartAddButton = document.createElement("img");
+    $editCartAddButton.classList.add("add-btn");
+    $editCartAddButton.src = "../images/Add Icon.svg";
 
-    card.appendChild(editCartWrapper);
+    $editCartWrapper.appendChild($editCartAddButton);
 
-    const pizzaInfos = document.createElement("ul");
-    pizzaInfos.classList.add("pizza-infos");
+    $card.appendChild($editCartWrapper);
 
-    const pizzaName = document.createElement("li");
-    pizzaName.classList.add("pizza-name");
-    pizzaName.textContent = this.name;
+    const $pizzaInfos = document.createElement("ul");
+    $pizzaInfos.classList.add("pizza-infos");
 
-    const pizzaPrice = document.createElement("li");
-    pizzaPrice.classList.add("pizza-price");
-    pizzaPrice.textContent = "$" + this.price.toFixed(2);
+    const $pizzaName = document.createElement("li");
+    $pizzaName.classList.add("pizza-name");
+    $pizzaName.textContent = this.product.name;
 
-    pizzaInfos.appendChild(pizzaName);
-    pizzaInfos.appendChild(pizzaPrice);
+    const $pizzaPrice = document.createElement("li");
+    $pizzaPrice.classList.add("pizza-price");
+    $pizzaPrice.textContent = "$" + this.product.price.toFixed(2);
 
-    card.appendChild(pizzaInfos);
+    $pizzaInfos.appendChild($pizzaName);
+    $pizzaInfos.appendChild($pizzaPrice);
 
-    return card;
+    $card.appendChild($pizzaInfos);
+
+    return [
+      $card,
+      {
+        $addToCartBtn,
+        $editCartWrapper,
+        $editCartSubtractButton,
+        $editCartAddButton,
+      },
+    ];
+  }
+
+  toggle() {
+    this.$element.classList.toggle("pizza-item--active");
+  }
+}
+
+class CartItem {
+  constructor(product) {
+    this.quantity = 1;
+    this.totalPrice = product.price;
+    this.product = product;
+
+    this.$increaseButton = this.product.card.$cardButtons.$editCartAddButton;
+    this.$decreaseButton =
+      this.product.card.$cardButtons.$editCartSubtractButton;
+    this.$addToCartBtn = this.product.card.$cardButtons.$addToCartBtn;
+
+    this.$increaseButton.addEventListener("click", () => this.increase());
+    this.$decreaseButton.addEventListener("click", () => this.decrease());
+    this.$addToCartBtn.addEventListener("click", () => this.addToCart());
+  }
+
+  calculateTotalPrice() {
+    this.totalPrice = this.quantity * this.product.price;
+  }
+
+  addToCart() {
+    this.quantity = 1;
+    this.product.card.updateQuantity(this.quantity);
+    this.calculateTotalPrice();
+    this.product.card.toggle();
+  }
+
+  increase() {
+    this.quantity++;
+    this.product.card.updateQuantity(this.quantity);
+    this.calculateTotalPrice();
+  }
+
+  decrease() {
+    this.quantity--;
+    console.log(this.quantity);
+    if (this.quantity <= 0) {
+      this.product.card.toggle();
+    }
+
+    this.product.card.updateQuantity(this.quantity);
+    this.calculateTotalPrice();
   }
 }
 
 class Cart {
   constructor() {
-    this.items = {};
+    this.items = [];
   }
 
-  appendItem(product) {
-    this.items[product.id] = { quantity: 1, product };
+  addItem(item) {
+    this.items.push(item);
   }
 
-  removeItem(product) {
-    delete this.items[product.id];
+  async order() {
+    const products = this.items
+      .filter((item) => item.quantity > 0)
+      .map((item) => {
+        return { quantity: item.quantity, uuid: item.product.id };
+      });
+    return await API.post("orders/", { products }, true);
   }
+}
+
+let products;
+let API;
+
+async function init() {
+  API = new Api("http://10.59.122.27:3000");
+
+  const res = await API.get("products/");
+
+  products = res.map((product) => new Product(product));
+  console.log(products);
+
+  $pizzasWrapper.innerHTML = "";
+  products.forEach((product) => {
+    $pizzasWrapper.appendChild(product.card.$element);
+  });
 }
 
 async function main() {
-  const API = new Api("http://10.59.122.150:3000");
+  const cart = new Cart();
 
-  const res = await API.get("");
+  console.log(cart);
 
-  console.log("===");
-  console.log(res);
-  console.log("===");
+  products.forEach((product) => {
+    function listener(e) {
+      cart.addItem(new CartItem(product));
+      product.card.toggle();
+      e.target.removeEventListener("click", listener);
+    }
+    product.card.$cardButtons.$addToCartBtn.addEventListener("click", listener);
+  });
 }
 
-main();
+init().then(main);
