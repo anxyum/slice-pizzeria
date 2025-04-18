@@ -1,6 +1,13 @@
 const $pizzasWrapper = document.querySelector(".pizzas-wrapper");
-const $cartWrapper = document.querySelector(".basket-aside");
 const $modal = document.querySelector(".order-modal-wrapper");
+
+const $emptyCart = document.querySelector(".empty-basket");
+
+const $cartWrapper = document.querySelector(".baskets-with-pizza");
+const $cartItemsWrapper = document.querySelector(".basket-products");
+const $cartOrderBtn = document.querySelector(".confirm-order-btn");
+const $cartItemsCount = document.querySelector(".basket-items-count");
+const $cartTotalPrice = document.querySelector(".total-order-price");
 
 class Api {
   constructor(url) {
@@ -29,12 +36,20 @@ class Api {
         `${this.url}/${route}`,
         {
           headers: {
+            "ngrok-skip-browser-warning": "1",
             Authorization: "Bearer " + this.token,
           },
         },
       ];
     } else {
-      params = [`${this.url}/${route}`];
+      params = [
+        `${this.url}/${route}`,
+        {
+          headers: {
+            "ngrok-skip-browser-warning": "1",
+          },
+        },
+      ];
     }
 
     const res = await fetch(...params);
@@ -49,8 +64,9 @@ class Api {
         {
           method: "POST",
           headers: {
-            Authorization: "Bearer " + this.token,
             "content-type": "application/json",
+            "ngrok-skip-browser-warning": "1",
+            Authorization: "Bearer " + this.token,
           },
           body: this.parseToJSON(body),
         },
@@ -62,6 +78,7 @@ class Api {
           method: "POST",
           headers: {
             "content-type": "application/json",
+            "ngrok-skip-browser-warning": "1",
           },
           body: this.parseToJSON(body),
         },
@@ -177,19 +194,34 @@ class CartItem {
     this.quantity = 1;
     this.totalPrice = product.price;
     this.product = product;
+    this.card = new CartItemCard(this);
+    this.onUpdate = [];
 
-    this.$increaseButton = this.product.card.$cardButtons.$editCartAddButton;
-    this.$decreaseButton =
-      this.product.card.$cardButtons.$editCartSubtractButton;
-    this.$addToCartBtn = this.product.card.$cardButtons.$addToCartBtn;
+    const $productCardButtons = this.product.card.$cardButtons;
+    this.$increaseButton = $productCardButtons.$editCartAddButton;
+    this.$decreaseButton = $productCardButtons.$editCartSubtractButton;
+    this.$addToCartBtn = $productCardButtons.$addToCartBtn;
 
     this.$increaseButton.addEventListener("click", () => this.increase());
     this.$decreaseButton.addEventListener("click", () => this.decrease());
     this.$addToCartBtn.addEventListener("click", () => this.addToCart());
+
+    const $itemCardElements = this.card.$cardElements;
+    this.$removeBtn = $itemCardElements.$removeBtn;
+
+    this.$removeBtn.addEventListener("click", () => {
+      this.removeItem();
+    });
   }
 
   calculateTotalPrice() {
     this.totalPrice = this.quantity * this.product.price;
+  }
+
+  removeItem() {
+    this.quantity = 0;
+    this.product.card.toggle();
+    this.card.toggle();
   }
 
   addToCart() {
@@ -197,33 +229,151 @@ class CartItem {
     this.product.card.updateQuantity(this.quantity);
     this.calculateTotalPrice();
     this.product.card.toggle();
+    this.card.updateQuantity(this.quantity);
+    this.card.toggle();
+
+    this.triggerOnUpdate();
   }
 
   increase() {
     this.quantity++;
     this.product.card.updateQuantity(this.quantity);
     this.calculateTotalPrice();
+    this.card.updateQuantity(this.quantity);
+
+    this.triggerOnUpdate();
   }
 
   decrease() {
     this.quantity--;
-    console.log(this.quantity);
+    this.card.updateQuantity(this.quantity);
     if (this.quantity <= 0) {
-      this.product.card.toggle();
+      this.removeItem();
     }
 
     this.product.card.updateQuantity(this.quantity);
     this.calculateTotalPrice();
+
+    this.triggerOnUpdate();
+  }
+
+  triggerOnUpdate() {
+    this.onUpdate.forEach((f) => f(this));
+  }
+}
+
+class CartItemCard {
+  constructor(item) {
+    this.item = item;
+    [this.$element, this.$cardElements] = this.createCard();
+  }
+
+  createCard() {
+    const $card = document.createElement("li");
+    $card.classList.add("basket-product-item");
+
+    const $productName = document.createElement("span");
+    $productName.classList.add("basket-product-item-name");
+    $productName.textContent = this.item.product.name;
+
+    $card.appendChild($productName);
+
+    const $productDetails = document.createElement("span");
+    $productDetails.classList.add("basket-product-details");
+
+    const $quantityWrapper = document.createElement("span");
+    $quantityWrapper.classList.add("basket-product-details-quantity");
+
+    const $quantity = document.createElement("span");
+    $quantity.textContent = this.item.quantity;
+
+    $quantityWrapper.appendChild($quantity);
+    $quantityWrapper.appendChild(document.createTextNode("x"));
+
+    $productDetails.appendChild($quantityWrapper);
+
+    const $unitPrice = document.createElement("span");
+    $unitPrice.classList.add("basket-product-details-unit-price");
+    $unitPrice.textContent = "@ $" + this.item.product.price.toFixed(2);
+
+    $productDetails.appendChild($unitPrice);
+
+    const $totalPriceWrapper = document.createElement("span");
+    $totalPriceWrapper.classList.add("basket-product-total-price");
+
+    const $totalPrice = document.createElement("span");
+    $totalPrice.textContent = this.item.totalPrice.toFixed(2);
+
+    $totalPriceWrapper.appendChild(document.createTextNode("$"));
+    $totalPriceWrapper.appendChild($totalPrice);
+
+    $productDetails.appendChild($totalPriceWrapper);
+
+    $card.appendChild($productDetails);
+
+    const $removeBtn = document.createElement("img");
+    $removeBtn.classList.add("basket-product-remove-icon");
+    $removeBtn.src = "../images/remove-icon.svg";
+
+    $card.appendChild($removeBtn);
+
+    return [
+      $card,
+      {
+        $quantity,
+        $totalPrice,
+        $removeBtn,
+      },
+    ];
+  }
+
+  updateQuantity(quantity) {
+    this.$cardElements.$quantity.textContent = quantity;
+    this.$cardElements.$totalPrice.textContent = (
+      quantity * this.item.product.price
+    ).toFixed(2);
+  }
+
+  toggle() {
+    this.$element.classList.toggle("hidden");
+    const $parent = this.$element.parentElement;
+    $parent.removeChild(this.$element);
+    $parent.appendChild(this.$element);
   }
 }
 
 class Cart {
-  constructor() {
+  constructor($mainWrapper, $emptyCart, $elements) {
     this.items = [];
+    this.$mainWrapper = $mainWrapper;
+    this.$emptyCart = $emptyCart;
+    this.$elements = $elements;
+  }
+
+  updateTotal() {
+    console.log("saucisson");
+
+    this.$elements.$totalPrice.textContent = this.items.reduce(
+      (a, b) => a + b.totalPrice,
+      0
+    );
+    this.$elements.$itemsCount.textContent = this.items.reduce(
+      (a, b) => a + b.quantity,
+      0
+    );
   }
 
   addItem(item) {
+    console.log(item);
     this.items.push(item);
+    this.$mainWrapper.appendChild(item.card.$element);
+    item.onUpdate.push(() => {
+      this.$elements;
+    });
+  }
+
+  countItems() {
+    return this.items.reduce((a, b) => a + b.quantity, 0);
   }
 
   async order() {
@@ -240,7 +390,7 @@ let products;
 let API;
 
 async function init() {
-  API = new Api("http://10.59.122.27:3000");
+  API = new Api("https://prime-garfish-currently.ngrok-free.app");
 
   const res = await API.get("products/");
 
@@ -254,7 +404,11 @@ async function init() {
 }
 
 async function main() {
-  const cart = new Cart();
+  const cart = new Cart($cartItemsWrapper, $emptyCart, {
+    $orderBtn: $cartOrderBtn,
+    $itemsCount: $cartItemsCount,
+    $totalPrice: $cartTotalPrice,
+  });
 
   console.log(cart);
 

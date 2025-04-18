@@ -2,7 +2,7 @@ const $pizzasWrapper = document.querySelector(".pizzas-wrapper");
 const $cartWrapper = document.querySelector(".basket-aside");
 const $modal = document.querySelector(".order-modal-wrapper");
 
-const apiPath = "http://10.59.122.27:3000";
+const apiPath = "https://prime-garfish-currently.ngrok-free.app";
 
 let cart = {};
 let products = [];
@@ -232,6 +232,7 @@ function displayCart(cart) {
     const res = await fetch(`${apiPath}/orders/`, {
       method: "POST",
       headers: {
+        "ngrok-skip-browser-warning": "1",
         Authorization: "Bearer " + localStorage.getItem("token"),
         "Content-Type": "application/json",
       },
@@ -251,7 +252,12 @@ function displayCart(cart) {
 }
 
 async function getProducts() {
-  const res = await fetch(`${apiPath}/products`);
+  const res = await fetch(`${apiPath}/products`, {
+    headers: {
+      "ngrok-skip-browser-warning": "1",
+      "Content-Type": "application/json",
+    },
+  });
   const data = await res.json();
   return data;
 }
